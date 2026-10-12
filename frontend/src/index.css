@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-inter antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-outfit tracking-tight;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-6 py-2.5 bg-rail-blue text-white font-medium rounded-sm 
+           transition-all duration-300 hover:bg-opacity-90 active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .glass-card {
+    @apply bg-white border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]
+           rounded-sm p-6;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-sm
+           focus:outline-none focus:border-rail-blue focus:ring-1 focus:ring-rail-blue/20
+           transition-all duration-200 outline-none;
+  }
+}
+
+/* Custom Rail Transitions */
+.rail-slide-up {
+  animation: railSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes railSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Safe areas: keep content clear of notches and home indicators when running full screen */
+@layer utilities {
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .pb-safe { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+  .pl-safe { padding-left: env(safe-area-inset-left); }
+  .pr-safe { padding-right: env(safe-area-inset-right); }
+  /* Dialog height that respects the mobile browser toolbar (dvh) with a vh fallback */
+  .modal-max-h { max-height: 90vh; max-height: 90dvh; }
+}
