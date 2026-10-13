@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CreditCard, History, MapPin, Zap, LogOut, ArrowRight, TrainFront, CheckCircle2, KeyRound } from 'lucide-react';
+import { CreditCard, History, MapPin, Zap, LogOut, ArrowRight, TrainFront, CheckCircle2, KeyRound, QrCode } from 'lucide-react';
 import { api, getStoredUser, setSession, clearSession, errorMessage } from '../api';
 import TopUpModal from '../components/TopUpModal';
+import TripQrModal from '../components/TripQrModal';
 import OfflineBanner from '../components/OfflineBanner';
 import InstallPrompt from '../components/InstallPrompt';
 import { useSessionStatus } from '../components/RequireAuth';
@@ -31,6 +32,9 @@ const Dashboard = () => {
   const [pwMessage, setPwMessage] = useState(null);
   const [isSavingPw, setIsSavingPw] = useState(false);
   const [savedAt, setSavedAt] = useState(null);
+  const [qrTrip, setQrTrip] = useState(null);
+  const [isEnding, setIsEnding] = useState(false);
+  const [tripNotice, setTripNotice] = useState(null);
   const online = useOnlineStatus();
   const sessionStatus = useSessionStatus();
   const offline = !online || sessionStatus === 'offline';
@@ -199,6 +203,37 @@ const Dashboard = () => {
     }
   };
 
+  const openTrip = trips.find((t) => t.status === 'open');
+
+  // Ends the trip: the full fare is debited now and a QR code is issued for the Station Master.
+  const handleEndTrip = async () => {
+    if (!openTrip || isEnding) return;
+    const ok = window.confirm(
+      `End your trip now?\n\nThe full fare of Rs. ${openTrip.fare} will be charged, even if you have not reached your destination.`
+    );
+    if (!ok) return;
+
+    setIsEnding(true);
+    setTripNotice(null);
+    try {
+      const res = await api.post(`/api/trips/${openTrip.id}/end`);
+      const { trip, newBalance } = res.data;
+      const current = getStoredUser();
+      if (current) {
+        const updated = { ...current, balance: newBalance };
+        setUser(updated);
+        setSession({ user: updated });
+      }
+      setQrTrip({ ...trip, routeName: openTrip.routeName, startStation: openTrip.startStation });
+      fetchTrips();
+      fetchHistory(getStoredUser()?.id);
+    } catch (err) {
+      setTripNotice({ type: 'error', text: errorMessage(err, 'Could not end the trip.') });
+    } finally {
+      setIsEnding(false);
+    }
+  };
+
   const handleLogout = () => {
     clearSession();
     navigate('/login');
@@ -261,6 +296,7 @@ const Dashboard = () => {
       </nav>
 
       {showTopUp && <TopUpModal onClose={() => setShowTopUp(false)} />}
+      {qrTrip && <TripQrModal trip={qrTrip} onClose={() => setQrTrip(null)} />}
 
       {showPassword && (
         <div className="fixed inset-0 z-[60] bg-slate-900/50 flex items-start sm:items-center justify-center p-4 pt-12 sm:pt-4" onClick={() => setShowPassword(false)}>
@@ -408,6 +444,27 @@ const Dashboard = () => {
               </div>
             </motion.div>
 
+            {/* Active trip: end it here to pay and get the QR code */}
+            {tripNotice && (
+              <div className="p-3 border-l-2 bg-red-50 border-red-500 text-red-600 text-sm font-medium">{tripNotice.text}</div>
+            )}
+            {openTrip && (
+              <div className="glass-card border-rail-blue">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-rail-blue">Trip in progress</p>
+                <p className="font-semibold text-slate-900 mt-2">{openTrip.routeName}</p>
+                <p className="text-xs text-slate-500 mt-1">From {openTrip.startStation} · Fare Rs. {openTrip.fare}</p>
+                <button
+                  onClick={handleEndTrip}
+                  disabled={isEnding || offline}
+                  title={offline ? "You're offline. Ending a trip needs a connection." : undefined}
+                  className="btn-primary w-full mt-4 py-2.5 min-h-[44px] flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <QrCode size={16} />
+                  {isEnding ? 'Ending...' : 'End Trip'}
+                </button>
+              </div>
+            )}
+
             {/* Quick Actions */}
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
@@ -541,9 +598,17 @@ const Dashboard = () => {
                       </div>
                       <div className="text-right shrink-0">
                         <p className="font-bold font-mono text-slate-900 whitespace-nowrap">Rs. {t.fare}</p>
-                        <span className={`text-[10px] uppercase font-bold tracking-widest ${t.status === 'open' ? 'text-rail-blue' : t.status === 'completed' ? 'text-green-600' : 'text-slate-400'}`}>
-                          {t.status === 'open' ? 'In progress' : t.status}
+                        <span className={`text-[10px] uppercase font-bold tracking-widest ${t.status === 'open' ? 'text-rail-blue' : t.status === 'completed' || t.status === 'ended' ? 'text-green-600' : 'text-slate-400'}`}>
+                          {t.status === 'open' ? 'In progress' : t.status === 'ended' ? 'Paid' : t.status}
                         </span>
+                        {t.status === 'ended' && t.qrToken && (
+                          <button
+                            onClick={() => setQrTrip(t)}
+                            className="mt-1 flex items-center gap-1 ml-auto text-xs font-medium text-rail-blue hover:underline"
+                          >
+                            <QrCode size={12} /> Show QR
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}

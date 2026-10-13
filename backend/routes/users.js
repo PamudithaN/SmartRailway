@@ -16,7 +16,7 @@ router.use(requireAuth, requireRole('admin'));
 
 const USER_COLUMNS =
   'id, username, role, balance, status, full_name AS "fullName", phone, nic, email, created_at AS "createdAt"';
-const ROLES = ['user', 'admin'];
+const ROLES = ['user', 'admin', 'station_master'];
 
 class HttpError extends Error {
   constructor(status, message) {

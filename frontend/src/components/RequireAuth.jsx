@@ -3,7 +3,8 @@ import { Navigate } from 'react-router-dom';
 import { api, getToken, getStoredUser, setSession, clearSession } from '../api';
 import { isOfflineError } from '../lib/network';
 
-const homeFor = (role) => (role === 'admin' ? '/admin' : '/dashboard');
+const HOME = { admin: '/admin', station_master: '/station' };
+const homeFor = (role) => HOME[role] || '/dashboard';
 
 // 'ok' = confirmed by the server; 'offline' = server unreachable, showing the stored user until reconnect.
 const SessionStatusContext = createContext('ok');

@@ -10,6 +10,22 @@ export const stationOnRoute = async (client, routeId, stationId) => {
   return rows[0]?.name ?? null;
 };
 
+// Debits the full trip fare and records the transaction. Must run inside a transaction.
+// A zero fare debits nothing and returns { transactionId: null, balance: null }.
+export const debitTripFare = async (client, { userId, fare, title }) => {
+  if (!(fare > 0)) return { transactionId: null, balance: null };
+  const debited = await client.query(
+    'UPDATE users SET balance = balance - $2 WHERE id = $1 AND balance >= $2 RETURNING balance',
+    [userId, fare]
+  );
+  if (debited.rows.length === 0) throw new HttpError(402, 'Insufficient funds', 'insufficient_funds');
+  const { id } = (await client.query(
+    "INSERT INTO transactions (user_id, type, title, amount) VALUES ($1, 'debit', $2, $3) RETURNING id",
+    [userId, title, fare]
+  )).rows[0];
+  return { transactionId: id, balance: debited.rows[0].balance };
+};
+
 // Shared start/end tap engine used by the Admin simulator and by reader devices.
 // Must run inside a transaction. `source` is 'admin' or 'reader'.
 // When `action` is null it is inferred: an open trip means end, otherwise start.
@@ -56,22 +72,14 @@ export const applyTap = async (client, { userId, routeId, stationId, action, sou
     throw new HttpError(400, 'End Station must differ from the start Station.', 'same_station');
   }
 
-  let transactionId = null;
-  let balance = card.balance;
-  if (open.fare > 0) {
-    const debited = await client.query(
-      'UPDATE users SET balance = balance - $2 WHERE id = $1 AND balance >= $2 RETURNING balance',
-      [userId, open.fare]
-    );
-    if (debited.rows.length === 0) throw new HttpError(402, 'Insufficient funds', 'insufficient_funds');
-    balance = debited.rows[0].balance;
-    const startName = await stationOnRoute(client, routeId, open.start_station_id);
-    const title = `Trip: ${route.name} (${startName} → ${stationName})`;
-    transactionId = (await client.query(
-      "INSERT INTO transactions (user_id, type, title, amount) VALUES ($1, 'debit', $2, $3) RETURNING id",
-      [userId, title, open.fare]
-    )).rows[0].id;
-  }
+  const startName = await stationOnRoute(client, routeId, open.start_station_id);
+  const charge = await debitTripFare(client, {
+    userId,
+    fare: open.fare,
+    title: `Trip: ${route.name} (${startName} → ${stationName})`,
+  });
+  const transactionId = charge.transactionId;
+  const balance = charge.balance ?? card.balance;
 
   await client.query(
     `UPDATE trips SET status = 'completed', end_station_id = $2, ended_at = now(), transaction_id = $3,

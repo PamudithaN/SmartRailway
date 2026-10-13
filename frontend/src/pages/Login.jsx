@@ -41,13 +41,15 @@ const Login = () => {
 
       if (response.data.success) {
         const { user, token } = response.data;
-        if (user.role !== role) {
+        // The staff face signs in Administrators and Station Masters.
+        const allowed = role === 'admin' ? ['admin', 'station_master'] : [role];
+        if (!allowed.includes(user.role)) {
           // Valid account, wrong login face: don't keep the session.
           clearSession();
           setError(`Account found, but lacks ${role} privileges.`);
         } else {
           setSession({ token, user });
-          navigate(role === 'admin' ? '/admin' : '/dashboard');
+          navigate(user.role === 'admin' ? '/admin' : user.role === 'station_master' ? '/station' : '/dashboard');
         }
       }
     } catch (err) {

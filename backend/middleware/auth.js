@@ -46,7 +46,14 @@ export const requireRole = (role) => (req, res, next) => {
   next();
 };
 
-export const publicUser = (u) => ({
+export const requireAnyRole = (...roles) => (req, res, next) => {
+  if (!roles.includes(req.user?.role)) {
+    return res.status(403).json({ success: false, message: 'Not permitted' });
+  }
+  next();
+};
+
+export const publicUser =(u) => ({
   id: u.id,
   username: u.username,
   role: u.role,

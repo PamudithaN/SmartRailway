@@ -269,6 +269,7 @@ const AdminDashboard = () => {
               >
                 <option value="user">Passenger</option>
                 <option value="admin">Admin</option>
+                <option value="station_master">Station Master</option>
               </select>
             )}
             <div className="flex flex-wrap gap-3 justify-end">
@@ -400,7 +401,7 @@ const AdminDashboard = () => {
                             <div>{p.email || '-'}</div>
                             <div className="text-slate-400">{[p.phone, p.nic].filter(Boolean).join(' · ')}</div>
                           </td>
-                          <td className="px-6 py-4 text-xs uppercase tracking-widest text-slate-500">{p.role === 'admin' ? 'Admin' : 'Passenger'}</td>
+                          <td className="px-6 py-4 text-xs uppercase tracking-widest text-slate-500">{p.role === 'admin' ? 'Admin' : p.role === 'station_master' ? 'Station Master' : 'Passenger'}</td>
                           <td className="px-6 py-4 font-bold font-mono text-right text-rail-blue">Rs. {p.balance}</td>
                           <td className="px-6 py-4 text-center">
                             {p.status === 'active' ? (

@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import RoutesPage from './pages/Routes';
+import StationMaster from './pages/StationMaster';
 import RequireAuth from './components/RequireAuth';
 import UpdatePrompt from './components/UpdatePrompt';
 
@@ -14,6 +15,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<RequireAuth role="user"><Dashboard /></RequireAuth>} />
         <Route path="/admin" element={<RequireAuth role="admin"><AdminDashboard /></RequireAuth>} />
+        <Route path="/station" element={<RequireAuth role="station_master"><StationMaster /></RequireAuth>} />
         <Route path="/routes" element={<RequireAuth><RoutesPage /></RequireAuth>} />
         <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>

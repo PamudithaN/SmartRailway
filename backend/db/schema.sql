@@ -185,6 +185,18 @@ ALTER TABLE trips ADD COLUMN IF NOT EXISTS start_source TEXT NOT NULL DEFAULT 'a
 ALTER TABLE trips ADD COLUMN IF NOT EXISTS end_source TEXT;
 ALTER TABLE trips ADD COLUMN IF NOT EXISTS device_id INTEGER REFERENCES devices(id);
 
+-- Station masters verify the Passenger's end-of-trip QR code.
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user', 'admin', 'station_master'));
+
+-- Trip lifecycle: open -> ended (Passenger pressed End Trip, fare debited, QR issued) -> completed (QR scanned).
+ALTER TABLE trips DROP CONSTRAINT IF EXISTS trips_status_check;
+ALTER TABLE trips ADD CONSTRAINT trips_status_check CHECK (status IN ('open', 'ended', 'completed', 'cancelled'));
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS qr_token TEXT;
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS scanned_at TIMESTAMPTZ;
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS scanned_by INTEGER REFERENCES users(id);
+CREATE UNIQUE INDEX IF NOT EXISTS trips_qr_token_key ON trips (qr_token) WHERE qr_token IS NOT NULL;
+
 ALTER TABLE topups ADD COLUMN IF NOT EXISTS payment_id TEXT;
 CREATE TABLE IF NOT EXISTS payment_events (
   id           TEXT PRIMARY KEY,

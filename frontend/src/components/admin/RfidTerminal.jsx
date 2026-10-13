@@ -5,6 +5,7 @@ import { api, errorMessage } from '../../api';
 
 const STATUS_STYLE = {
   open: 'bg-blue-50 text-blue-700',
+  ended: 'bg-amber-50 text-amber-700',
   completed: 'bg-green-50 text-green-700',
   cancelled: 'bg-slate-100 text-slate-500',
 };
@@ -128,6 +129,7 @@ const RfidTerminal = ({ routes, onTapDone }) => {
           <h3 className="font-bold outfit">Trips</h3>
           <select className="px-3 py-1.5 bg-white border border-slate-200 rounded-sm text-sm" value={tripFilter} onChange={(e) => setTripFilter(e.target.value)}>
             <option value="open">Open</option>
+            <option value="ended">Ended (awaiting scan)</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
